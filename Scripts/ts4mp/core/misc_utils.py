@@ -1,6 +1,5 @@
 import os
 
-
 def get_current_user_directory():
     return os.path.dirname(os.path.abspath(__file__)) + os.sep
 
@@ -17,3 +16,4 @@ def get_sims_documents_directory():
         root_path += str(root_file_split[index]) + '/'
 
     return root_path
+

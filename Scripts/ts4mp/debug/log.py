@@ -1,9 +1,9 @@
 import os
 import time
-from ts4mp.core.mp_utils import get_sims_documents_directory
+from ts4mp.core.misc_utils import get_sims_documents_directory
 
-DEBUG_MODE = True
-FORCE_RETURN = True
+DEBUG_MODE = False
+FORCE_RETURN = False
 
 class Timer():
     def __init__(self, name):
@@ -15,7 +15,7 @@ class Timer():
     def __exit__(self, *args):
         self.t2 = time.time()
         if (self.t2 - self.t1) * 1000 > 0:
-            ts4mp_log(self.name, "time: {}".format((self.t2 - self.t1) * 1000))
+            ts4mp_log(self.name, "time: {}".format((self.t2 - self.t1) * 1000), force=True)
 
 
 

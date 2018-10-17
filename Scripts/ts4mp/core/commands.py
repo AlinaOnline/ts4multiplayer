@@ -1,17 +1,9 @@
 import socket
-
 import distributor.system
-import persistence_module
 import services
 import sims4.commands
-from protocolbuffers.FileSerialization_pb2 import ZoneObjectData
-from server.account import Account
 from world.travel_service import travel_sim_to_zone
-import sys
 from ts4mp.debug.log import ts4mp_log
-from ts4mp.core.mp_sync import outgoing_commands, outgoing_lock, ArbritraryFileMessage, get_file_matching_name
-import game_services
-import zone
 
 @sims4.commands.Command('get_con', command_type=sims4.commands.CommandType.Live)
 def get_con(_connection=None):
@@ -80,27 +72,6 @@ def get_name(_connection=None):
     output(str(socket.gethostname()))
 
 
-@sims4.commands.Command('load_zone', command_type=sims4.commands.CommandType.Live)
-def load_zone(_connection=None):
-    try:
-        zone = services.current_zone()
-        name = str(hex(zone.id)).replace("0x", "")
-        zone_objects_pb = ZoneObjectData()
-
-        (file_path, _) = get_file_matching_name(name)
-        zone_objects_message = open(file_path, "rb").read()
-
-        ts4mp_log("msg", dir(zone_objects_pb))
-
-        zone_objects_pb.ParseFromString(zone_objects_message)
-
-        ts4mp_log("msg", zone_objects_pb)
-        ts4mp_log("msg", zone_objects_message)
-
-        persistence_module.run_persistence_operation(persistence_module.PersistenceOpType.kPersistenceOpLoadZoneObjects, zone_objects_pb, 0, None)
-    except Exception as e:
-        ts4mp_log("er", e)
-
 
 @sims4.commands.Command('travel', command_type=sims4.commands.CommandType.Live)
 def travel(_connection=None):
@@ -117,24 +88,6 @@ def get_zone_id(_connection=None):
 
     output(str(zone.id))
 
-
-@sims4.commands.Command('send_lot_architecture_and_reload', command_type=sims4.commands.CommandType.Live)
-def send_lot_architecture_and_reload(_connection=None):
-    output = sims4.commands.CheatOutput(_connection)
-    output("working")
-
-    zone = services.current_zone()
-    name = str(hex(zone.id)).replace("0x", "")
-
-    ts4mp_log("zone_id", "{}, {}".format(name, zone.id))
-
-    (file_path, file_name) = get_file_matching_name(name)
-
-    if file_path is not None:
-        with outgoing_lock:
-            ts4mp_log("zone_id", "{}, {}".format(file_path, file_name))
-            msg = ArbritraryFileMessage(name, open(file_path, "rb").read())
-            outgoing_commands.append(msg)
 
 
 @sims4.commands.Command('change_persona', command_type=sims4.commands.CommandType.Live)

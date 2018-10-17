@@ -3,7 +3,7 @@ import os
 
 import sims4.commands
 from sims4 import reload
-from ts4mp.core.mp_utils import get_sims_documents_directory
+from ts4mp.core.misc_utils import get_sims_documents_directory
 
 #use it like Scripts\ts4mp\debug\reload
 @sims4.commands.Command('ts4mp.reload', command_type=sims4.commands.CommandType.Live)

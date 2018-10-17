@@ -21,6 +21,8 @@ from protocolbuffers.DistributorOps_pb2 import Operation
 from ts4mp.core.overrides import system_distributor
 from ts4mp.debug.log import ts4mp_log
 
+import distributor.system
+from ts4mp.configs.server_config import MULTIPLAYER_MOD_ENABLED
 
 def get_first_client(self):
     # Get the original client instead of the stand-in client. Just in-case some EA code is finnicky with multiple clients. Only supports one
@@ -54,7 +56,7 @@ def on_add(self):
     if self.id != 1000:
         #this block of code is triggered to create another client if this client is a "real" client
 
-        account = server.account.Account(865431, "Elder Price")
+        account = server.account.Account(865431, "Katsudon")
         new_client = services.client_manager().create_client(1000, account, 0)
         for sim_info in self._selectable_sims:
             new_client._selectable_sims.add_selectable_sim_info(sim_info)
@@ -133,7 +135,8 @@ def send_selectable_sims_update(self):
                 if zone_data_proto is not None:
                     new_sim.instance_info.zone_name = zone_data_proto.name
     ts4mp_log("debugging", "client id is: {}".format(self.id))
-    distributor_instance = Distributor.instance().get_client(self.id)
+    #distributor_instance = Distributor.instance().get_client(self.id)
+    distributor_instance = Distributor.instance()
     distributor_instance.add_op_with_no_owner(GenericProtocolBufferOp(Operation.SELECTABLE_SIMS_UPDATE, msg))
 
 
@@ -155,8 +158,6 @@ def push_speed(self, speed, source=GameSpeedChangeSource.GAMEPLAY, validity_chec
 
     return None
 
-import distributor.system
-from ts4mp.configs.server_config import MULTIPLAYER_MOD_ENABLED
 
 if MULTIPLAYER_MOD_ENABLED:
     distributor.distributor_service.DistributorService.start = start
@@ -169,14 +170,4 @@ if MULTIPLAYER_MOD_ENABLED:
 
     server.clientmanager.ClientManager.get_first_client = get_first_client
     server.clientmanager.ClientManager.get_first_client_id = get_first_client_id
-
-
-def override_functions_depending_on_client_or_not(is_client):
-    return
-
-
-
-
-
-# ui.ui_dialog_service.UiDialogueService.dialog_show = dialog_show
 

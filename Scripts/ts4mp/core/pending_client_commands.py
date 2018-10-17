@@ -16,6 +16,8 @@ command_to_pb = {
 }
 
 
+# I have no idea what this whole file does. Better not touch it!
+
 def get_command_function_from_pb(pb):
     if pb in command_to_pb:
         return command_to_pb[pb]

@@ -6,23 +6,21 @@ from server_commands.clock_commands import set_speed, request_pause, unrequest_p
 from server_commands.interaction_commands import has_choices, generate_choices, generate_phone_choices, select_choice, cancel_mixer_interaction, cancel_super_interaction, push_interaction
 from server_commands.lighting_commands import set_color_and_intensity
 from server_commands.sim_commands import set_active_sim
+from ts4mp.core.received_command.message_types import ProtocolBufferMessage
 from server_commands.ui_commands import ui_dialog_respond, ui_dialog_pick_result, ui_dialog_text_input
 from sims4 import core_services
 import game_services
 import time_service
-import time
-import ts4mp.core.mp_sync
-import distributor
 from server_commands.career_commands import find_career, select_career
-
-
+import ts4mp.core.received_command.execution as execution
+from ts4mp.core.received_command.execution import server_sync, client_sync
 from time_service import logger
-from ts4mp.core.csn import mp_chat
+from ts4mp.core.notifications import mp_chat
 from ts4mp.utils.native.decorator import decorator
 from ts4mp.debug.log import ts4mp_log
-from ts4mp.core.mp_sync import ProtocolBufferMessage, outgoing_lock, outgoing_commands, client_sync, server_sync
 from ts4mp.utils.native.undecorated import undecorated
 from server_commands.argument_helpers import  RequiredTargetParam
+from ts4mp.core.received_command.queue import commandQueue
 
 COMMAND_FUNCTIONS = {
     'interactions.has_choices'        : has_choices,
@@ -65,18 +63,12 @@ def send_message_server(self, msg_id, msg):
         ts4mp_log("locks", "acquiring outgoing lock")
 
         # We use a lock here because outgoing_commands is also being altered by the client socket thread.
-        with outgoing_lock:
-            outgoing_commands.append(message)
+        commandQueue.queue_outgoing_command(message)
         ts4mp_log("network", "Queueing outgoing command for {}".format(self.id))
 
         ts4mp_log("locks", "releasing outgoing lock")
 
 
-def send_message_client(self, msg_id, msg):
-    # Send Message override for the client.
-    # We don't want any of the original server sending stuff to the client.
-    # So we override it to do absolutely nothing.
-    pass
 
 import time
 @decorator
@@ -88,25 +80,20 @@ def wrapper_client(func, *args, **kwargs):
 
     ts4mp_log("locks", "acquiring outgoing lock")
 
-    with outgoing_lock:
-        # TODO: You should not be referring to a global variable that is in a different module
-        parsed_args = []
-        for arg in args:
-            if isinstance(arg, RequiredTargetParam):
-                arg = arg.target_id
-            parsed_args.append(arg)
-        ts4mp_log("arg_handler", "\n" + str(func.__name__) + ", " + str(parsed_args) + "  " + str(kwargs), force=False)
-        outgoing_commands.append("\n" + str(func.__name__) + ", " + str(parsed_args) + "  " + str(kwargs))
-    # we sleep here so the networking threads can send the commands, if you remove this, it will make the response times
-    # higher
-    time.sleep(0.2)
+    parsed_args = []
+    for arg in args:
+        if isinstance(arg, RequiredTargetParam):
+            arg = arg.target_id
+        parsed_args.append(arg)
+    ts4mp_log("arg_handler", "\n" + str(func.__name__) + ", " + str(parsed_args) + "  " + str(kwargs), force=False)
+
+    commandQueue.queue_outgoing_command("\n" + str(func.__name__) + ", " + str(parsed_args) + "  " + str(kwargs))
 
     def do_nothing():
         pass
 
     return do_nothing
 
-    # ts4mp_log_debug("locks", "releasing outgoing lock")
 
 
 def on_tick_client():
@@ -115,7 +102,7 @@ def on_tick_client():
     # If we don't have any client, that means we aren't in a zone yet.
     # If we do have at least one client, that means we are in a zone and can sync information.
     service_manager = game_services.service_manager
-    ts4mp.core.mp_sync.client_online = False
+    execution.client_online = False
 
     if service_manager is None:
         return
@@ -129,7 +116,7 @@ def on_tick_client():
 
     if client is None:
         return
-    ts4mp.core.mp_sync.client_online = True
+    execution.client_online = True
 
     client_sync()
 
@@ -157,9 +144,9 @@ def on_tick_server():
 
 
 def update(self, time_slice=True):
-    ts4mp_log("simulate", "Client is online?: {}".format(ts4mp.core.mp_sync.client_online), force=False)
+    ts4mp_log("simulate", "Client is online?: {}".format(execution.client_online), force=False)
 
-    if ts4mp.core.mp_sync.client_online:
+    if execution.client_online:
         # ts4mp_log("simulate", "Client is online?: {}".format(ts4mp.core.mp_essential.client_online), force=True)
 
         return
@@ -178,12 +165,9 @@ def update(self, time_slice=True):
 
 from ts4mp.configs.server_config import MULTIPLAYER_MOD_ENABLED
 
-if MULTIPLAYER_MOD_ENABLED:
-    server.client.Client.send_message = send_message_server
 
 def override_functions_depending_on_client_or_not(is_client):
     if is_client:
-        #server.client.Client.send_message = send_message_client
         core_services.on_tick = on_tick_client
         time_service.TimeService.update = update
         for function_command_name, command_function in COMMAND_FUNCTIONS.items():
@@ -191,3 +175,5 @@ def override_functions_depending_on_client_or_not(is_client):
     else:
         core_services.on_tick = on_tick_server
 
+if MULTIPLAYER_MOD_ENABLED:
+    server.client.Client.send_message = send_message_server

@@ -17,7 +17,6 @@ from protocolbuffers.DistributorOps_pb2 import Operation
 
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.pending_client_commands import get_command_function_from_pb, try_get_client_id_of_pending_command, remove_earliest_command_client
-import ts4mp.core.mp
 class SystemDistributor:
     def __init__(self):
         self.journal = Journal()
